@@ -1,0 +1,20 @@
+{
+  "name": "video-backend",
+  "version": "1.0.0",
+  "description": "A Part of backend of mainsite",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/fs-extra": "^5.0.4",
+    "@types/koa": "^2.0.46",
+    "@types/koa-router": "^7.0.31",
+    "fs-extra": "^7.0.0",
+    "koa": "^2.5.2",
+    "koa-router": "^7.4.0",
+    "redis": "^2.8.0"
+  }
+}
