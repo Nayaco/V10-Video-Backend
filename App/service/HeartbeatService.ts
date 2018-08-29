@@ -1,6 +1,8 @@
 import * as redis from 'redis';
+import * as bluebird from 'bluebird';
 import {RedisClient} from 'redis';
-import { redis_interface } from '../interfaces';
+import { redis_interface, hb_interface } from '../interfaces';
+bluebird.promisifyAll(redis);
 
 class HeartbeatService{
     client: RedisClient;
@@ -15,7 +17,15 @@ class HeartbeatService{
         })
     }
 
-    async sign(){
-        
+    async reg(usr: string, file: string){
+
+    }
+
+    async status(usr: string, file: string){
+
+    }
+
+    async unreg(){
+
     }
 }

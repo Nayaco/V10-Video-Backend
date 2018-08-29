@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/bluebird": "^3.5.24",
     "@types/fs-extra": "^5.0.4",
     "@types/koa": "^2.0.46",
     "@types/koa-router": "^7.0.31",
