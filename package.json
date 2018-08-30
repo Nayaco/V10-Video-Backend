@@ -22,5 +22,6 @@
     "mysql2": "^1.6.1",
     "redis": "^2.8.0",
     "sequelize": "^4.38.0"
-  }
+  },
+  "dependencies": {}
 }
