@@ -28,7 +28,7 @@ class UploadService {
             Source.pipe(Dst)
             .on('error', (err)=>{reject(err)})
             .on('finish', ()=>{resolve(true)});
-        })
+        });
     }
 
     async GetHash(file: PathLike){
