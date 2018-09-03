@@ -1,7 +1,7 @@
 import * as redis from 'redis';
 import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
-import { redis_interface, hb_interface } from '../interfaces';
+import { redis_interface } from '../interfaces';
 
 class HeartbeatService{
     expire: number;
@@ -27,39 +27,14 @@ class HeartbeatService{
     };
 
     /** 
-    * @param {string} usr
-    * @param {string} file
+    * @param {string} key
+    * @param {object} payload
     * @return {string, hb_interface} 
     */
-    async reg(usr: string, file: string){
-        const now = (new Date()).getTime() / 1000;
-        const status = {
-            usr: usr,
-            time: now,
-            count: 0,
-            status: 'ONLINE',
-        };
-        const state = await this.redisHmset(file, status);
-        let output: hb_interface;
-        if(state == 'OK'){
-            output = {
-                usr: usr,
-                time: now,
-                file: file,
-                count: 0,
-                status: 'ONLINE',
-            };
-            return {err: <any>null, res: output};
-        }else{
-            output = {
-                usr: usr,
-                time: now,
-                file: file,
-                count: 0,
-                status: 'FAILED',
-            };
-            return {err: 'REDIS ERROR', output};
-        }
+    async reg(key: string, payload: object){
+       const now = (new Date()).getTime() / 1000;
+       const state = await this.redisHmset(key, payload);
+       
     }
 
     /** 
