@@ -3,7 +3,7 @@ import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type EXPIRE_INFO = {code: 0|1|2, info: 'ONLINE'|'EXPIRED'|'OFFLINE'} | null;
+type EXPIRE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
 
 /**
  * @param {number}code
@@ -82,23 +82,45 @@ class HeartbeatService{
     /** 
     * @param {string} key 
     * @param {object} payload
-    * @return {string, object} - update status & update content
+    * @return {ONLINE|OK|FAILED|EXPIRED|OFFLINE} - update status
     */
     async update(key: string, command: string = 'UPDATE'){
+        if(command != 'UPDATE' && command != 'HANGUP' && command != 'REFRESH')return 'Syntax Error';
         const now = (new Date()).getTime() / 1000;
         const expireStatus = await this.checkExpire(key, now);
         const rawValue = await this.getValue(key);
-        if(expireStatus == ){
+        if(command == 'REFRESH'  && rawValue != 'OFFLINE')return 'ONLINE';
+        if(expireStatus.code == 0){
+            let newValue:any;
             if(command == 'UPDATE'){
-                const newValue = {...rawValue, time: now, };
+                newValue = {...rawValue, time: now};
+            }else if(command == 'HANGUP'){
+                newValue = {...rawValue, time: now, state: 'OFFLINE'};
+            }
+            const state = this.redisHmset(key, newValue);
+            if(state == 'OK')return 'OK';
+                else return 'FAILED';
+        }else if(expireStatus.code == 1 && rawValue.state != 'OFFLINE'){
+            const newValue = {...rawValue, state: 'OFFLINE'};
+            const state = this.redisHmset(key, newValue);
+            if(state == 'OK')return 'EXPIRED';
+                else return 'FAILED';
+        }else{
+            if(command == 'REFRESH'){
+                const newValue = {...rawValue, state: 'OFFLINE'};
+                const state = this.redisHmset(key, newValue);
+                if(state == 'OK')return 'EXPIRED';
+                    else return 'FAILED';
+            }else{
+                return 'OFFLINE';
             }
         }
         
     }
 
-    async unreg(file: string){
-        const state = this.redisDel(file);
-        
+    async unreg(key: string){
+        const state = await this.redisDel(key);
+        return state;
     }
 };
 
