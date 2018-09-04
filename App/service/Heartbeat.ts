@@ -29,46 +29,51 @@ class HeartbeatService{
     /** 
     * @param {string} key
     * @param {object} payload
-    * @return {string, hb_interface} 
+    * @return {string} - state 
     */
     async reg(key: string, payload: object){
-       const now = (new Date()).getTime() / 1000;
-       const state = await this.redisHmset(key, payload);
-       
-    }
-
-    /** 
-    * @param {string} file
-    * @return {stringboolean, hb_interface} 
-    */
-    async getStatus(file: string){
-        const status:any = await this.redisHgetall(file);
-        const ans = {
-            usr: status.usr,
-            file: status.file,
-            time: status.time,
-            status: status.status,
-        }; 
-        return status;
-    }
-
-    /** 
-    * @param {string} file
-    * @param {string} command - Command to implement with this info
-    * @return {stringboolean, hb_interface} 
-    */
-    async renew(file: string, command: string){
         const now = (new Date()).getTime() / 1000;
-        if(command == 'STOP'){
-            const old_status = await this.getStatus(file);
-            const new_status = {
-                usr: old_status.usr, 
-                time: now,
-                count: old_status.count + 1,
-                status: 'N',
-            };
-            this.redisHmset();
+        const value = {...payload, time: now};
+        const state = await this.redisHmset(key, value);
+        if(state == 'OK')return 'OK';
+            else return 'FAILED';
+    }
+
+    /** 
+    * @param {string} key
+    * @return {object} - object
+    */
+    async getValue(key: string){
+        const value = await this.redisHgetall(key);
+        return value;
+    }
+
+    /** 
+    * @param {string} key
+    * @return {boolean} -expire status 
+    */
+    async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
+        const value = await this.redisHgetall(key);
+        const lastChange = value.time;
+        if(now - lastChange >= this.expire){
+            return true;
+        }else{
+            return false;
         }
+    }
+
+    /** 
+    * @param {string} key 
+    * @param {object} payload
+    * @return {string, object} - update status & update content
+    */
+    async update(key: string, command: string = 'UPDATE'){
+        const now = (new Date()).getTime() / 1000;
+        const expireStatus = await this.checkExpire(key, now);
+        if(expireStatus == true){
+            
+        }
+        const rawValue = await this.getValue(key);
         
     }
 
