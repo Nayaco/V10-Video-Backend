@@ -2,8 +2,7 @@ import * as fs from 'fs-extra';
 import { PathLike } from 'fs-extra';
 import * as Crypto from 'crypto';
 import * as bluebird from 'bluebird';
-import { sql_interface } from  '../interfaces'
-
+import { sql_interface } from  '../interfaces';
 
 class UploadService {
     _resource: string;

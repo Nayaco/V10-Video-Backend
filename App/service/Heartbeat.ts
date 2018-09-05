@@ -18,7 +18,7 @@ function makeExpireInfo(code: number): EXPIRE_INFO{
     }
 }
 
-class HeartbeatService{
+class Heartbeat{
     expire: number;
     client: RedisClient;
     _redisconfig: redis_interface;
@@ -81,7 +81,7 @@ class HeartbeatService{
 
     /** 
     * @param {string} key 
-    * @param {object} payload
+    * @param {UPDATE|HANGUP|REFRESH} payload
     * @return {ONLINE|OK|FAILED|EXPIRED|OFFLINE} - update status
     */
     async update(key: string, command: string = 'UPDATE'){
@@ -89,7 +89,7 @@ class HeartbeatService{
         const now = (new Date()).getTime() / 1000;
         const expireStatus = await this.checkExpire(key, now);
         const rawValue = await this.getValue(key);
-        if(command == 'REFRESH'  && rawValue != 'OFFLINE')return 'ONLINE';
+        if(command == 'REFRESH'  && rawValue.state != 'OFFLINE')return 'ONLINE';
         if(expireStatus.code == 0){
             let newValue:any;
             if(command == 'UPDATE'){
@@ -118,13 +118,19 @@ class HeartbeatService{
         
     }
 
+    /**
+     * @param {string} key 
+     * @return {OK|FAILED} - unreg status
+     */
     async unreg(key: string){
         const state = await this.redisDel(key);
-        return state;
+        if(state == 'OK')return 'OK';
+            else return 'FAILED';
     }
 };
 
 export {
     EXPIRE_INFO,
-    HeartbeatService, 
+    makeExpireInfo,
+    Heartbeat, 
 }
