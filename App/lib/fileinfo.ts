@@ -12,4 +12,4 @@ const createsequelize = (db:string, username:string, password:string)=> {
 }
 
 const instance = createsequelize(mysqlConfig.db, mysqlConfig.usr, mysqlConfig.passwd);
-export default createsequelize;
+export default instance;
