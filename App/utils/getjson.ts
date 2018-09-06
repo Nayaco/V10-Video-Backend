@@ -5,3 +5,5 @@ const getJSON = (path:PathLike):object =>{
     const JsonString = fs.readFileSync(path).toString();
     return JSON.parse(JsonString); 
 }
+
+export default getJSON;
