@@ -1,2 +1,4 @@
 node_modules
 dist
+assets
+configs/**/*.config.json

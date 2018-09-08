@@ -3,7 +3,7 @@ import { PathLike } from 'fs-extra';
 import * as Crypto from 'crypto';
 import * as path from 'path';
 
-class UploadService {
+class FileService {
     _resource: string;
 
     constructor(resource: string = path.resolve(__dirname, '..', '..' + '/assets')){
@@ -17,10 +17,10 @@ class UploadService {
         this._resource = resource;
     }
     
-    StoreFile(file: PathLike){
+    StoreFile(file: PathLike, filename: string){
         return new Promise((resolve,reject) =>{
             const Source = fs.createReadStream(file);
-            const Dst = fs.createWriteStream(this._resource, {flags: 'a'});
+            const Dst = fs.createWriteStream(`${this._resource}/${filename}`, {flags: 'a'});
             Source.pipe(Dst)
             .on('error', (err)=>{reject(err)})
             .on('finish', ()=>{resolve(true)});
@@ -47,4 +47,4 @@ class UploadService {
 
 }
 
-export default UploadService;
+export { FileService };
