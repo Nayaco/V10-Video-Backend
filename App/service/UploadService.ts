@@ -1,16 +1,13 @@
 import * as fs from 'fs-extra';
 import { PathLike } from 'fs-extra';
 import * as Crypto from 'crypto';
-import * as bluebird from 'bluebird';
-import { sql_interface } from  '../interfaces';
+import * as path from 'path';
 
 class UploadService {
     _resource: string;
-    _sqlconfig: sql_interface;
 
-    constructor(resource: string ,sql_conf?: sql_interface){
+    constructor(resource: string = path.resolve(__dirname, '..', '..' + '/assets')){
         this._resource = resource;
-        this._sqlconfig = sql_conf;
     }
     
     get Resource(): string{
@@ -20,7 +17,7 @@ class UploadService {
         this._resource = resource;
     }
     
-    async StoreFile(file: PathLike){
+    StoreFile(file: PathLike){
         return new Promise((resolve,reject) =>{
             const Source = fs.createReadStream(file);
             const Dst = fs.createWriteStream(this._resource, {flags: 'a'});
@@ -30,7 +27,7 @@ class UploadService {
         });
     }
 
-    async GetHash(file: PathLike){
+    GetHash(file: PathLike){
         return new Promise((resolve,reject) =>{
             const Source = fs.createReadStream(file);
             const Hash =  Crypto.createHash('sha256');
@@ -50,3 +47,4 @@ class UploadService {
 
 }
 
+export default UploadService;

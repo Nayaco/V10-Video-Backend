@@ -3,22 +3,21 @@ import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type EXPIRE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
+type FILE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'OFFLINE'}|null;
 
 /**
  * @param {number}code
- * @return {EXPIRE_INFO} - loooook above
+ * @return {FILE_INFO} - loooook above
  */
-function makeExpireInfo(code: number): EXPIRE_INFO{
+function makeFileInfo(code: 0|1):FILE_INFO{
     switch(code){
         case 0: return {code: 0, info: 'ONLINE'};
-        case 1: return {code: 1, info: 'EXPIRED'};
-        case 2: return {code: 2, info: 'OFFLINE'};
+        case 1: return {code: 1, info: 'OFFLINE'};
         default: return null;
     }
 }
 
-class Heartbeat{
+class Cache{
     expire: number;
     client: RedisClient;
     _redisconfig: redis_interface;
@@ -65,17 +64,15 @@ class Heartbeat{
 
     /** 
     * @param {string} key
-    * @return {EXPIRE_INFO} -expire status 
+    * @return {FILE_INFO} -expire status 
     */
     async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
         const value = await this.redisHgetall(key);
         const lastChange = value.time;
-        if(now - lastChange >= this.expire && value.state == 'ONLINE'){
-            return makeExpireInfo(1);
-        }else if(value.state == 'OFFLINE'){
-            return makeExpireInfo(2);
+        if(now - lastChange >= this.expire || value.state == 'OFFLINE'){
+            return makeFileInfo(1);
         }else{
-            return makeExpireInfo(0);
+            return makeFileInfo(0);
         }
     }
 
@@ -94,30 +91,28 @@ class Heartbeat{
             let newValue:any;
             if(command == 'UPDATE'){
                 newValue = {...rawValue, time: now};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(0);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
             }else if(command == 'HANGUP'){
                 newValue = {...rawValue, time: now, state: 'OFFLINE'};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(2);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
             }
+            const state = this.redisHmset(key, newValue);
+            if(state == 'OK')return 'OK';
+                else return 'FAILED';
         }else if(expireStatus.code == 1 && rawValue.state != 'OFFLINE'){
             const newValue = {...rawValue, state: 'OFFLINE'};
             const state = this.redisHmset(key, newValue);
-            if(state == 'OK')return makeExpireInfo(1);
-                else throw {errcode: 1, err: 'REDIS FAILED'};
+            if(state == 'OK')return 'EXPIRED';
+                else return 'FAILED';
         }else{
             if(command == 'REFRESH'){
                 const newValue = {...rawValue, state: 'OFFLINE'};
                 const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(1);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
+                if(state == 'OK')return 'EXPIRED';
+                    else return 'FAILED';
             }else{
-                return makeExpireInfo(2);
+                return 'OFFLINE';
             }
         }
+        
     }
 
     /**

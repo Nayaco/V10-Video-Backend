@@ -25,5 +25,10 @@ export default instance.define('mediafiles',{
     }, 
 
     size: Sequelize.INTEGER,
-
+     
+    /*hash value of the first blob of a file*/
+    hash: {
+        type: Sequelize.STRING, 
+        unique: true,
+    },
 });

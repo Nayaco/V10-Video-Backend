@@ -39,6 +39,7 @@ class Heartbeat{
         this.redisHmset = bluebird.promisify(this.client.hmset).bind(this.client);
         this.redisListkeys = bluebird.promisify(this.client.keys).bind(this.client);
         this.redisDel = bluebird.promisify(this.client.del).bind(this.client);
+        
     };
 
     /** 
@@ -50,6 +51,7 @@ class Heartbeat{
         const now = (new Date()).getTime() / 1000;
         const value = {...payload, time: now, state: 'ONLINE'};
         const state = await this.redisHmset(key, value);
+        console.log(state);
         if(state == 'OK')return 'OK';
             else return 'FAILED';
     }
