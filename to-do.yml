@@ -1,0 +1,5 @@
+
+reg user => --reg file1 => update user => get blob => check usr expire- ne => check file expire+ ne  => update status => file status check + nf=> end
+            |-reg file2                                               |                        |                                           |
+            |-...                                                     |                        - e/of=>                                    -  f=> md5 => unreg file => update user/unreg user => end 
+            |                                                         - e  =>                                                                     md5x=> del & unreg => update user => end      

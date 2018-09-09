@@ -1,18 +1,20 @@
+/* file */
 import * as redis from 'redis';
 import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type FILE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'OFFLINE'}|null;
+type FILE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
 
 /**
  * @param {number}code
  * @return {FILE_INFO} - loooook above
  */
-function makeFileInfo(code: 0|1):FILE_INFO{
+function makeFileinfo(code: number): FILE_INFO{
     switch(code){
         case 0: return {code: 0, info: 'ONLINE'};
-        case 1: return {code: 1, info: 'OFFLINE'};
+        case 1: return {code: 1, info: 'EXPIRED'};
+        case 2: return {code: 2, info: 'OFFLINE'};
         default: return null;
     }
 }
@@ -43,11 +45,11 @@ class Cache{
     /** 
     * @param {string} key
     * @param {object} payload
-    * @return {string} - state 
+    * @return {OK|FAILD} - state 
     */
     async reg(key: string, payload: object){
         const now = (new Date()).getTime() / 1000;
-        const value = {...payload, time: now, state: 'ONLINE'};
+        const value = {...payload, time: now, state: 'ONLINE', count: 0};
         const state = await this.redisHmset(key, value);
         if(state == 'OK')return 'OK';
             else return 'FAILED';
@@ -69,50 +71,56 @@ class Cache{
     async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
         const value = await this.redisHgetall(key);
         const lastChange = value.time;
-        if(now - lastChange >= this.expire || value.state == 'OFFLINE'){
-            return makeFileInfo(1);
+        if(now - lastChange >= this.expire && value.state == 'ONLINE'){
+            return makeFileinfo(1);
+        }else if(value.state == 'OFFLINE'){
+            return makeFileinfo(2);
         }else{
-            return makeFileInfo(0);
+            return makeFileinfo(0);
         }
     }
 
     /** 
     * @param {string} key 
-    * @param {UPDATE|HANGUP|REFRESH} payload
-    * @return {ONLINE|OK|FAILED|EXPIRED|OFFLINE} - update status
+    * @param {UPDATE|HANGUP|REFRESH} command
+    * @param {object} payload
+    * @return {ONLINE|EXPIRED|OFFLINE} - update status
     */
-    async update(key: string, command: string = 'UPDATE'){
+    async update(key: string, command: string = 'UPDATE', payload:object = {}){
         if(command != 'UPDATE' && command != 'HANGUP' && command != 'REFRESH')return 'Syntax Error';
         const now = (new Date()).getTime() / 1000;
         const expireStatus = await this.checkExpire(key, now);
-        const rawValue = await this.getValue(key);
+        let rawValue = await this.getValue(key);
+        rawValue = {...rawValue, ...payload};
         if(command == 'REFRESH'  && rawValue.state != 'OFFLINE')return 'ONLINE';
         if(expireStatus.code == 0){
             let newValue:any;
             if(command == 'UPDATE'){
                 newValue = {...rawValue, time: now};
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileinfo(0);
+                    else throw {errcode: 1, err: 'REDIS FAILED'};
             }else if(command == 'HANGUP'){
                 newValue = {...rawValue, time: now, state: 'OFFLINE'};
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileinfo(2);
+                    else throw {errcode: 1, err: 'REDIS FAILED'};
             }
-            const state = this.redisHmset(key, newValue);
-            if(state == 'OK')return 'OK';
-                else return 'FAILED';
         }else if(expireStatus.code == 1 && rawValue.state != 'OFFLINE'){
             const newValue = {...rawValue, state: 'OFFLINE'};
-            const state = this.redisHmset(key, newValue);
-            if(state == 'OK')return 'EXPIRED';
-                else return 'FAILED';
+            const state = await this.redisHmset(key, newValue);
+            if(state == 'OK')return makeFileinfo(1);
+                else throw {errcode: 1, err: 'REDIS FAILED'};
         }else{
             if(command == 'REFRESH'){
                 const newValue = {...rawValue, state: 'OFFLINE'};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return 'EXPIRED';
-                    else return 'FAILED';
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileinfo(1);
+                    else throw {errcode: 1, err: 'REDIS FAILED'};
             }else{
-                return 'OFFLINE';
+                return makeFileinfo(2);
             }
         }
-        
     }
 
     /**
@@ -127,7 +135,7 @@ class Cache{
 };
 
 export {
-    EXPIRE_INFO,
-    makeExpireInfo,
-    Heartbeat, 
+    FILE_INFO,
+    makeFileinfo,
+    Cache, 
 }

@@ -7,7 +7,7 @@ export default instance.define('mediafiles',{
       primaryKey: true, 
     },
     
-    title: {
+    name: {
         type: Sequelize.STRING,
         unique: true,
     },

@@ -2,6 +2,7 @@ import * as Koa from 'koa';
 import * as koaBody from 'koa-body';
 import {EXPIRE_INFO, makeExpireInfo, Heartbeat} from '../service/Heartbeat';
 import {FileService} from '../service/FileService';
+import {Cache} from '../service/UploadCache';
 import getJson from '../utils/getjson';
 import * as path from 'path';
 
@@ -13,6 +14,7 @@ const hbS = new Heartbeat({
     port: config.port,
 }, 30);
 
+
 const uploadFile: Koa.Middleware = async(ctx, next)=> {
     const file = ctx.request.files.file;
     fileS.StoreFile(file.path, file.name);
@@ -20,7 +22,12 @@ const uploadFile: Koa.Middleware = async(ctx, next)=> {
 }
 
 const regFile: Koa.Middleware = async(ctx, next)=> {
-
+    const file_info:any = ctx.request.body;
 }
 
-export {uploadFile, regFile};
+const regUsr: Koa.Middleware = async(ctx, next)=> {
+    const 
+}
+
+export {uploadFile, regFile, regUsr};
+

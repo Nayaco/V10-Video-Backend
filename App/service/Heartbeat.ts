@@ -1,9 +1,10 @@
+/* usr */
 import * as redis from 'redis';
 import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type EXPIRE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
+type EXPIRE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|null;
 
 /**
  * @param {number}code
@@ -13,7 +14,6 @@ function makeExpireInfo(code: number): EXPIRE_INFO{
     switch(code){
         case 0: return {code: 0, info: 'ONLINE'};
         case 1: return {code: 1, info: 'EXPIRED'};
-        case 2: return {code: 2, info: 'OFFLINE'};
         default: return null;
     }
 }
@@ -44,11 +44,11 @@ class Heartbeat{
     /** 
     * @param {string} key
     * @param {object} payload
-    * @return {string} - state 
+    * @return {OK|FAILD} - state 
     */
     async reg(key: string, payload: object){
         const now = (new Date()).getTime() / 1000;
-        const value = {...payload, time: now, state: 'ONLINE'};
+        const value = {...payload, time: now};
         const state = await this.redisHmset(key, value);
         if(state == 'OK')return 'OK';
             else return 'FAILED';
@@ -70,10 +70,8 @@ class Heartbeat{
     async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
         const value = await this.redisHgetall(key);
         const lastChange = value.time;
-        if(now - lastChange >= this.expire && value.state == 'ONLINE'){
+        if(now - lastChange >= this.expire){
             return makeExpireInfo(1);
-        }else if(value.state == 'OFFLINE'){
-            return makeExpireInfo(2);
         }else{
             return makeExpireInfo(0);
         }
@@ -81,42 +79,28 @@ class Heartbeat{
 
     /** 
     * @param {string} key 
-    * @param {UPDATE|HANGUP|REFRESH} payload
-    * @return {ONLINE|OK|FAILED|EXPIRED|OFFLINE} - update status
+    * @param {UPDATE|REFRESH} command
+    * @param {object} payload
+    * @return {EXPIRE_INFO} - update status
     */
-    async update(key: string, command: string = 'UPDATE'){
-        if(command != 'UPDATE' && command != 'HANGUP' && command != 'REFRESH')return 'Syntax Error';
+    async update(key: string, payload:object = {}){
         const now = (new Date()).getTime() / 1000;
         const expireStatus = await this.checkExpire(key, now);
-        const rawValue = await this.getValue(key);
-        if(command == 'REFRESH'  && rawValue.state != 'OFFLINE')return 'ONLINE';
+        let rawValue = await this.getValue(key);
+        const lastChange = rawValue.time;
+        rawValue = {...rawValue, ...payload};
+        let newValue:any;
+        
         if(expireStatus.code == 0){
-            let newValue:any;
-            if(command == 'UPDATE'){
-                newValue = {...rawValue, time: now};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(0);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
-            }else if(command == 'HANGUP'){
-                newValue = {...rawValue, time: now, state: 'OFFLINE'};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(2);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
-            }
-        }else if(expireStatus.code == 1 && rawValue.state != 'OFFLINE'){
-            const newValue = {...rawValue, state: 'OFFLINE'};
-            const state = this.redisHmset(key, newValue);
-            if(state == 'OK')return makeExpireInfo(1);
+            newValue = {...rawValue, time: now};
+            const state = await this.redisHmset(key, newValue);
+            if(state == 'OK')return makeExpireInfo(0);
                 else throw {errcode: 1, err: 'REDIS FAILED'};
         }else{
-            if(command == 'REFRESH'){
-                const newValue = {...rawValue, state: 'OFFLINE'};
-                const state = this.redisHmset(key, newValue);
-                if(state == 'OK')return makeExpireInfo(1);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
-            }else{
-                return makeExpireInfo(2);
-            }
+            newValue = {...rawValue, time: now};
+            const state = await this.redisHmset(key, newValue);
+            if(state == 'OK')return makeExpireInfo(1);
+                else throw {errcode: 1, err: 'REDIS FAILED'};
         }
     }
 
