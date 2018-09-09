@@ -1,10 +1,11 @@
 import instance from '../lib/filedb';
 import * as Sequelize from 'sequelize';
 
-export default instance.define('mediafiles',{
+const fmodel = instance.define('mediafiles',{
     UUID: {
       type: Sequelize.STRING,
       primaryKey: true, 
+      autoIncrement: true,
     },
     
     title: {
@@ -40,3 +41,5 @@ export default instance.define('mediafiles',{
         unique: true,
     },
 });
+
+export default fmodel;

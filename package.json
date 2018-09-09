@@ -1,11 +1,12 @@
 {
   "name": "video-backend",
   "version": "1.0.0",
-  "description": "A Part of backend of mainsite",
+  "description": "A Part of backend of V10-Mainsite",
   "main": "index.js",
   "scripts": {
     "test": "mocha --watch-extensions ts,tsx \"test/**/*.{spec.ts,spec.tsx}\"",
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "tsc & node dist/index"
   },
   "author": "",
   "license": "ISC",

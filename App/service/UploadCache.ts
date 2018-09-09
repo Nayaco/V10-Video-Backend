@@ -5,6 +5,7 @@ import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
 type FILE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
+type FILE_STAT = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|{code: 3, info: 'REDIS FAILED'};
 
 /**
  * @param {number}code
@@ -16,6 +17,19 @@ function makeFileinfo(code: number): FILE_INFO{
         case 1: return {code: 1, info: 'EXPIRED'};
         case 2: return {code: 2, info: 'OFFLINE'};
         default: return null;
+    }
+}
+
+/**
+ * @param {number}code
+ * @return {FILE_STAT} - loooook above
+ */
+function makeFileStat(code: number): FILE_STAT{
+    switch(code){
+        case 0: return {code: 0, info: 'ONLINE'};
+        case 1: return {code: 1, info: 'EXPIRED'};
+        case 2: return {code: 2, info: 'OFFLINE'};
+        case 3: return {code: 3, info: 'REDIS FAILED'};
     }
 }
 
@@ -84,7 +98,7 @@ class Cache{
     * @param {string} key 
     * @param {UPDATE|HANGUP|REFRESH} command
     * @param {object} payload
-    * @return {ONLINE|EXPIRED|OFFLINE} - update status
+    * @return {FILE_STAT} - update status
     */
     async update(key: string, command: string = 'UPDATE', payload:object = {}){
         if(command != 'UPDATE' && command != 'HANGUP' && command != 'REFRESH')return 'Syntax Error';
@@ -92,33 +106,47 @@ class Cache{
         const expireStatus = await this.checkExpire(key, now);
         let rawValue = await this.getValue(key);
         rawValue = {...rawValue, ...payload};
-        if(command == 'REFRESH'  && rawValue.state != 'OFFLINE')return 'ONLINE';
+        let newValue = {};
+
         if(expireStatus.code == 0){
-            let newValue:any;
-            if(command == 'UPDATE'){
-                newValue = {...rawValue, time: now};
+            if(command == 'UPDATE'){// online
+                newValue = {...rawValue, time: now, count: rawValue.count + 1};
                 const state = await this.redisHmset(key, newValue);
-                if(state == 'OK')return makeFileinfo(0);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
+                if(state == 'OK')return makeFileStat(0);
+                    else return makeFileStat(3);
             }else if(command == 'HANGUP'){
                 newValue = {...rawValue, time: now, state: 'OFFLINE'};
                 const state = await this.redisHmset(key, newValue);
-                if(state == 'OK')return makeFileinfo(2);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
-            }
-        }else if(expireStatus.code == 1 && rawValue.state != 'OFFLINE'){
-            const newValue = {...rawValue, state: 'OFFLINE'};
-            const state = await this.redisHmset(key, newValue);
-            if(state == 'OK')return makeFileinfo(1);
-                else throw {errcode: 1, err: 'REDIS FAILED'};
-        }else{
-            if(command == 'REFRESH'){
-                const newValue = {...rawValue, state: 'OFFLINE'};
-                const state = await this.redisHmset(key, newValue);
-                if(state == 'OK')return makeFileinfo(1);
-                    else throw {errcode: 1, err: 'REDIS FAILED'};
+                if(state == 'OK')return makeFileStat(2);
+                    else return makeFileStat(3);
             }else{
-                return makeFileinfo(2);
+                return makeFileStat(0);               
+            }
+        }else if(expireStatus.code == 1){// expired
+            if(command == 'UPDATE'){
+                return makeFileStat(1);
+            }else if(command == 'HANGUP'){
+                newValue = {...rawValue, time: now, state: 'OFFLINE'};
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileStat(2);
+                    else return makeFileStat(3);
+            }else{
+                newValue = {...rawValue, time: now, state: 'ONLINE'};
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileStat(0);
+                    else return makeFileStat(3);               
+            }
+            
+        }else{ // offline
+            if(command == 'UPDATE'){
+                return makeFileStat(2);
+            }else if(command == 'HANGUP'){
+                return makeFileStat(2);
+            }else{
+                newValue = {...rawValue, time: now, state: 'ONLINE'};
+                const state = await this.redisHmset(key, newValue);
+                if(state == 'OK')return makeFileStat(0);
+                    else return makeFileStat(3);               
             }
         }
     }
@@ -135,7 +163,6 @@ class Cache{
 };
 
 export {
-    FILE_INFO,
-    makeFileinfo,
+    FILE_STAT,
     Cache, 
 }

@@ -5,6 +5,7 @@ import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
 type EXPIRE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|null;
+type USER_STAT = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'REDIS FAILED'};
 
 /**
  * @param {number}code
@@ -15,6 +16,18 @@ function makeExpireInfo(code: number): EXPIRE_INFO{
         case 0: return {code: 0, info: 'ONLINE'};
         case 1: return {code: 1, info: 'EXPIRED'};
         default: return null;
+    }
+}
+
+/**
+ * @param {number}code
+ * @return {USER_STAT} - loooook above
+ */
+function makeUserStat(code: number): USER_STAT{
+    switch(code){
+        case 0: return {code: 0, info: 'ONLINE'};
+        case 1: return {code: 1, info: 'EXPIRED'};
+        case 2: return {code: 2, info: 'REDIS FAILED'};
     }
 }
 
@@ -81,7 +94,7 @@ class Heartbeat{
     * @param {string} key 
     * @param {UPDATE|REFRESH} command
     * @param {object} payload
-    * @return {EXPIRE_INFO} - update status
+    * @return {USER_STAT} - update status
     */
     async update(key: string, payload:object = {}){
         const now = (new Date()).getTime() / 1000;
@@ -90,17 +103,17 @@ class Heartbeat{
         const lastChange = rawValue.time;
         rawValue = {...rawValue, ...payload};
         let newValue:any;
-        
+
         if(expireStatus.code == 0){
             newValue = {...rawValue, time: now};
             const state = await this.redisHmset(key, newValue);
-            if(state == 'OK')return makeExpireInfo(0);
-                else throw {errcode: 1, err: 'REDIS FAILED'};
+            if(state == 'OK')return makeUserStat(0);
+                else return makeUserStat(2);
         }else{
             newValue = {...rawValue, time: now};
             const state = await this.redisHmset(key, newValue);
-            if(state == 'OK')return makeExpireInfo(1);
-                else throw {errcode: 1, err: 'REDIS FAILED'};
+            if(state == 'OK')return makeUserStat(1);
+                else return makeUserStat(2);
         }
     }
 
@@ -116,7 +129,6 @@ class Heartbeat{
 };
 
 export {
-    EXPIRE_INFO,
-    makeExpireInfo,
+    USER_STAT,
     Heartbeat, 
 }
