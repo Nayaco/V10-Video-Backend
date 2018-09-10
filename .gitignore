@@ -3,3 +3,4 @@ dist
 assets
 configs/**/*.config.json
 to-do.yml
+.autocommit
