@@ -27,7 +27,7 @@ const fmodel = instance.define('mediafiles',{
         unique: true,
     }, 
 
-    size: Sequelize.INTEGER,
+    size: Sequelize.INTEGER, // KB
      
     /*hash value of the first blob of a file*/
     hash: {

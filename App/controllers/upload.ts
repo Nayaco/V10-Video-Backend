@@ -33,11 +33,13 @@ const regFile: Koa.Middleware = async(ctx, next)=> {
         hash: 'ssss',
         author: usr
     });
-    const redisStat = await cacheS.reg(file_info.file, {usr: usr});
+    console.log(dbStat);
+    const redisSta= await cacheS.reg(file_info.title, {usr: usr});
 }
 
 const regUsr: Koa.Middleware = async(ctx, next)=> {
-    
+    const usr_info:any = ctx.request.body;
+    const usr = usr_info.usr;
 }
 
 export {uploadFile, regFile, regUsr};
