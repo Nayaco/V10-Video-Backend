@@ -1,23 +1,42 @@
+/* to do with file */
 import * as Koa from 'koa';
 import * as koaBody from 'koa-body';
-import {USER_STAT, Heartbeat} from '../service/Heartbeat';
-import {FILE_STAT, Cache} from '../service/UploadCache';
-import {FileService} from '../service/FileService';
-import getJson from '../utils/getjson';
 import * as path from 'path';
-import fdb from '../models/files.model';
+import * as moment from 'moment'; 
+import getJson from '../utils/getjson';
+
+import fdb from '../models/files.model';                 // DB which store informations of files
+import {FILE_STAT, Cache} from '../service/UploadCache'; // file-stat cache 
+import {FileService} from '../service/FileService';      // file-store service
 
 const config:any = getJson(path.resolve(__dirname, '..', '..' + '/configs/storage.config'));
-const hbsConf:any = config.redis['0'];
 const cacheConf:any = config.redis['1'];
 
 const fileS = new FileService();
-const hbS = new Heartbeat(hbsConf, 600);
 const cacheS = new Cache(cacheConf, 300);
 
 const uploadFile: Koa.Middleware = async(ctx, next)=> {
     const file = ctx.request.files.file;
-    fileS.StoreFile(file.path, file.name);
+    const fileStat = await cacheS.checkExpire(file.name);
+    switch(fileStat.code){
+        case 0: {
+            const fsStat = await fileS.StoreFile(file.path, file.name);
+            if(fsStat == true){
+                cacheS.update(file.name);
+            }
+            break;
+        }
+        case 1: {
+            ctx.body = 
+            break;
+        }
+        case 2: {
+            break;
+        }
+        default: {
+
+        }
+    }
     await next();
 }
 
@@ -37,10 +56,4 @@ const regFile: Koa.Middleware = async(ctx, next)=> {
     const redisSta= await cacheS.reg(file_info.title, {usr: usr});
 }
 
-const regUsr: Koa.Middleware = async(ctx, next)=> {
-    const usr_info:any = ctx.request.body;
-    const usr = usr_info.usr;
-}
-
-export {uploadFile, regFile, regUsr};
-
+export {uploadFile, regFile};
