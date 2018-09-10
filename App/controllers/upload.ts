@@ -27,7 +27,9 @@ const uploadFile: Koa.Middleware = async(ctx, next)=> {
             break;
         }
         case 1: {
-            ctx.body = 
+            ctx.body = {
+
+            }
             break;
         }
         case 2: {
@@ -52,7 +54,6 @@ const regFile: Koa.Middleware = async(ctx, next)=> {
         hash: 'ssss',
         author: usr
     });
-    console.log(dbStat);
     const redisSta= await cacheS.reg(file_info.title, {usr: usr});
 }
 
