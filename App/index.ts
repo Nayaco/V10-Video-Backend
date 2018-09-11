@@ -7,6 +7,7 @@ app.use(koaBody({
     multipart: true,
     formidable: {
         maxFileSize: 10*1024*1024,
+        hash: 'md5',
     },
 }));
 
