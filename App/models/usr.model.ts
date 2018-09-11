@@ -14,8 +14,8 @@ const umodel = instance.define('mediafiles',{
     },
     
     time: {
-        type: Sequelize.STRING,
-        defaultValue: '1970-01-01T00:00:00Z',// ISO 8601
+        type: Sequelize.DATE,
+        defaultValue: new Date('2018-01-01 00:00:00.000'),// ISO 8601
     }, 
     
     description: {

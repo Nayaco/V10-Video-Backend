@@ -59,14 +59,19 @@ class Cache{
     /** 
     * @param {string} key
     * @param {object} payload
-    * @return {OK|FAILD} - state 
+    * @return {OK|FAILD|EXIST} - state 
     */
     async reg(key: string, payload: object){
         const now = (new Date()).getTime() / 1000;
-        const value = {...payload, time: now, state: 'ONLINE', count: 0};
-        const state = await this.redisHmset(key, value);
-        if(state == 'OK')return 'OK';
-            else return 'FAILED';
+        const findKey = await this.getValue(key);
+        if(findKey == false){ 
+            const value = {...payload, time: now, state: 'ONLINE', count: 0};
+            const state = await this.redisHmset(key, value);
+            if(state == 'OK')return 'OK';
+                else return 'FAILED';
+        }else{
+            return 'EXIST';
+        }
     }
 
     /** 
@@ -100,8 +105,7 @@ class Cache{
     * @param {object} payload
     * @return {FILE_STAT} - update status
     */
-    async update(key: string, command: string = 'UPDATE', payload:object = {}){
-        if(command != 'UPDATE' && command != 'HANGUP' && command != 'REFRESH')return 'Syntax Error';
+    async update(key: string, command: 'UPDATE'|'HANGUP'|'REFRESH' = 'UPDATE', payload:object = {}){
         const now = (new Date()).getTime() / 1000;
         const expireStatus = await this.checkExpire(key, now);
         let rawValue = await this.getValue(key);

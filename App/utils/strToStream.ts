@@ -9,7 +9,7 @@ import { Stream, PassThrough, Readable, Writable} from 'stream';
 *   import * as s2s from 'path-to-this-file';
 *   const stream = s2s('I am a cow', 'r');
 */
-const Str2Stream = (str: String, flag?: String):Stream =>{
+const str2Stream = (str: String, flag?: String):Stream =>{
     switch(flag){
         case 'r': {
             var output = new PassThrough();
@@ -31,4 +31,4 @@ const Str2Stream = (str: String, flag?: String):Stream =>{
     } 
 }
 
-export default Str2Stream;
+export default str2Stream;
