@@ -6,7 +6,7 @@
   "scripts": {
     "test": "mocha --watch-extensions ts,tsx \"test/**/*.{spec.ts,spec.tsx}\"",
     "build": "tsc",
-    "dev": "tsc & node dist/index", 
+    "dev": "tsc & node dist/index",
     "commit": "./.autocommit"
   },
   "author": "",

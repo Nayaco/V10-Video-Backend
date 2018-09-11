@@ -4,21 +4,7 @@ import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type FILE_INFO = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|null;
 type FILE_STAT = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|{code: 3, info: 'REDIS FAILED'};
-
-/**
- * @param {number}code
- * @return {FILE_INFO} - loooook above
- */
-function makeFileinfo(code: number): FILE_INFO{
-    switch(code){
-        case 0: return {code: 0, info: 'ONLINE'};
-        case 1: return {code: 1, info: 'EXPIRED'};
-        case 2: return {code: 2, info: 'OFFLINE'};
-        default: return null;
-    }
-}
 
 /**
  * @param {number}code
@@ -64,7 +50,7 @@ class Cache{
     async reg(key: string, payload: object){
         const now = (new Date()).getTime() / 1000;
         const findKey = await this.getValue(key);
-        if(findKey == false){ 
+        if(findKey == null){ 
             const value = {...payload, time: now, state: 'ONLINE', count: 0};
             const state = await this.redisHmset(key, value);
             if(state == 'OK')return 'OK';
@@ -85,18 +71,23 @@ class Cache{
 
     /** 
     * @param {string} key
-    * @return {FILE_INFO} -expire status 
+    * @return {FILE_STAT} -expire status 
     */
     async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
-        const value = await this.redisHgetall(key);
-        const lastChange = value.time;
-        if(now - lastChange >= this.expire && value.state == 'ONLINE'){
-            return makeFileinfo(1);
-        }else if(value.state == 'OFFLINE'){
-            return makeFileinfo(2);
-        }else{
-            return makeFileinfo(0);
-        }
+        try{
+            const value = await this.redisHgetall(key);
+            if(value == null)return makeFileStat(3);
+            const lastChange = value.time;
+            if(now - lastChange >= this.expire && value.state == 'ONLINE'){
+                return makeFileStat(1);
+            }else if(value.state == 'OFFLINE'){
+                return makeFileStat(2);
+            }else{
+                return makeFileStat(0);
+            }
+        }catch(e){
+            throw {errcode: 102, err: 'Reids Key Not Exist'}
+        };
     }
 
     /** 

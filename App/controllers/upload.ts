@@ -23,11 +23,10 @@ const upload: Koa.Middleware = async(ctx, next)=> {
     const file = ctx.request.files.file;
     const info = ctx.request.body;
     const name = file.name;
-
-    if(file.hash != info.hash){
+    /*if(file.hash != info.hash){
         await cacheS.update(name, 'HANGUP');
         throw {errcode: 201, err: 'Trans Failed'};
-    }
+    }*/
     const fileStat = await cacheS.checkExpire(name);
     switch(fileStat.code){
         case 0: {
@@ -54,7 +53,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                         time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
                         payload: {
                             finish: true,
-                            hash: fileS.GetHash(name),
+                            hash: await fileS.GetHash(name),
                         }
                     }
                     ctxBody(ctx, res, 200);
@@ -176,6 +175,12 @@ const reg: Koa.Middleware = async(ctx, next)=> {
 }
 
 const cancel: Koa.Middleware = async(ctx, next)=> {
+
+}
+
+const del: Koa.Middleware = async(ctx, next)=> {
+    /*
+    db*/
 
 }
 

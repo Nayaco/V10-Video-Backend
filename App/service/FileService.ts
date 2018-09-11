@@ -27,19 +27,20 @@ class FileService {
         });
     }
 
-    GetHash(file: PathLike){
+    GetHash(filename: PathLike){
+        const filepath = `${this._resource}/${filename}`;
         return new Promise((resolve,reject) =>{
-            const Source = fs.createReadStream(file);
-            const Hash =  Crypto.createHash('sha256');
-            Source.pipe(Hash)
-            .on('error', (err)=>{reject(err)})
-            .on('finish', ()=>{resolve(Hash.digest('hex'))});
-        }) 
+            const Hash = Crypto.createHash('md5');     
+            const Source = fs.createReadStream(filepath);
+            Source.on('error', (err)=>{reject(err)});
+            Source.on('end', ()=>{resolve(Hash.digest('hex'))});
+            Source.pipe(Hash, {end: false});
+        });
     }
 
-    async Del(file: string){
+    async Del(filename: string){
         try{
-            await fs.remove(file);
+            await fs.remove(filename);
         }catch(err){
             throw err;
         }
