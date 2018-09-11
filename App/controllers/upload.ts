@@ -19,7 +19,7 @@ const fileConfig = filesConfig.fileService;
 const fileS = new FileService();
 const cacheS = new Cache(cacheConf, fileConfig.expire);
 
-const uploadFile: Koa.Middleware = async(ctx, next)=> {
+const upload: Koa.Middleware = async(ctx, next)=> {
     const file = ctx.request.files.file;
     const info = ctx.request.body;
     const name = file.name;
@@ -33,7 +33,9 @@ const uploadFile: Koa.Middleware = async(ctx, next)=> {
         case 0: {
             const fsStat = await fileS.StoreFile(file.path, name);
             const fileInfo = await cacheS.getValue(name);
-            const cacheStat = await cacheS.update(name);
+            const cacheStat = await cacheS.update(name, 'UPDATE',{
+                recieved: file.size + fileInfo.recieved,
+            });
             if(fileInfo != false && cacheStat.code != 3){
                 if(fileInfo.size > file.size + fileInfo.recieved){
                     const res: upl_stat = {
@@ -107,10 +109,13 @@ const uploadFile: Koa.Middleware = async(ctx, next)=> {
     await next();
 }
 
-const stopFile: Koa.Middleware = async(ctx, next)=> {
+const stop: Koa.Middleware = async(ctx, next)=> {
+    const info = ctx.request.body;
+    const redisStat =  await cacheS.update(info.name, 'HANGUP');
     
     await next();
 }
+
 const verify: Koa.Middleware = async(ctx, next)=> {
     const info = ctx.request.body;
     if(info.verify == true){
@@ -123,20 +128,26 @@ const verify: Koa.Middleware = async(ctx, next)=> {
             }
             ctxBody(ctx, res, 200);
         }else{
+            throw {errcode: 101, err: 'Redis Failed'};
+        }
+    }else{
+        const redisStat = await cacheS.unreg(info.name);
+        if(redisStat == 'OK'){
+            await fileS.Del(info.name);
             const res: upl_stat = {
-                code: 3,
+                code: 4,
                 state: 'FAILED',
                 time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
             }
             ctxBody(ctx, res, 200);
+        }else{
+            throw {errcode: 101, err: 'Redis Failed'};
         }
-    }else{
-
     }
     await next();
 }
 
-const regFile: Koa.Middleware = async(ctx, next)=> {
+const reg: Koa.Middleware = async(ctx, next)=> {
     const info:any = ctx.request.body;
     const usr = info.usr;
     /*
@@ -153,5 +164,8 @@ const regFile: Koa.Middleware = async(ctx, next)=> {
     const redisStat= await cacheS.reg(info.name, {size: info.size, recieved: 0});
 }
 
+const cancel: Koa.Middleware = async(ctx, next)=> {
 
-export {uploadFile, regFile};
+}
+
+export {upload, reg, stop, cancel};
