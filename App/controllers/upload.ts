@@ -74,6 +74,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                     state: 'EXPIRED',
                     time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
                     payload: {
+                        info: 'REFRESHED',
                         count: fileInfo.count,
                     }
                 }
@@ -93,6 +94,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                     state: 'OFFLINE',
                     time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
                     payload: {
+                        info: 'REFRESHED',
                         count: fileInfo.count,
                     }
                 }
@@ -112,7 +114,16 @@ const upload: Koa.Middleware = async(ctx, next)=> {
 const stop: Koa.Middleware = async(ctx, next)=> {
     const info = ctx.request.body;
     const redisStat =  await cacheS.update(info.name, 'HANGUP');
-    
+    if(redisStat.code == 2){
+        const res: upl_stat = {
+            code: 2,
+            state: 'OFFLINE',
+            time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+        }
+        ctxBody(ctx, res, 200);
+    }else{
+        throw {errcode: 101, err: 'Redis Failed'};
+    }
     await next();
 }
 
