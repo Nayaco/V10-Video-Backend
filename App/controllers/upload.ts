@@ -44,7 +44,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                         payload: {
                             finish: false,
                         }
-                    }
+                    };
                     ctxBody(ctx, res, 200);
                 }else{
                     const res: upl_stat = {
@@ -55,7 +55,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                             finish: true,
                             hash: await fileS.GetHash(name),
                         }
-                    }
+                    };
                     ctxBody(ctx, res, 200);
                 }
             }else{
@@ -76,7 +76,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                         info: 'REFRESHED',
                         count: fileInfo.count,
                     }
-                }
+                };
                 ctxBody(ctx, res, 200);
             }else{
                 await cacheS.update(name, 'HANGUP');
@@ -96,12 +96,23 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                         info: 'REFRESHED',
                         count: fileInfo.count,
                     }
-                }
+                };
                 ctxBody(ctx, res, 200);
             }else{
                 throw {errcode: 101, err: 'Redis Failed'};
             }
             break;
+        }
+        case 3: {
+            const res: upl_stat = {
+                code: 4,
+                state: 'FAILED',
+                time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+                payload: {
+                    info: 'NOT EXIST'
+                }
+            };
+            ctxBody(ctx, res, 200);
         }
         default: {
             throw {errcode: 101, err: 'Redis Failed'};
@@ -118,7 +129,17 @@ const stop: Koa.Middleware = async(ctx, next)=> {
             code: 2,
             state: 'OFFLINE',
             time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
-        }
+        };
+        ctxBody(ctx, res, 200);
+    }else if(redisStat.code == 3){
+        const res: upl_stat = {
+            code: 4,
+            state: 'FAILED',
+            time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+            payload: {
+                info: 'NOT EXIST'
+            }
+        };
         ctxBody(ctx, res, 200);
     }else{
         throw {errcode: 101, err: 'Redis Failed'};
@@ -135,7 +156,7 @@ const verify: Koa.Middleware = async(ctx, next)=> {
                 code: 3,
                 state: 'SUCCESS',
                 time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
-            }
+            };
             ctxBody(ctx, res, 200);
         }else{
             throw {errcode: 101, err: 'Redis Failed'};
@@ -171,17 +192,75 @@ const reg: Koa.Middleware = async(ctx, next)=> {
         author: usr
     });
     */
-    const redisStat= await cacheS.reg(info.name, {size: info.size, recieved: 0});
+    const redisStat = await cacheS.reg(info.name, {size: info.size, recieved: 0});
+    switch(redisStat){
+        case 'OK': {
+            const res: upl_stat = {
+                code: 3,
+                state: 'SUCCESS',
+                time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+            };
+            ctxBody(ctx, res, 200);
+        }
+        case 'FAILED': {
+            throw {errcode: 101, err: 'Redis Failed'};
+        }
+        case 'EXIST': {
+            const res: upl_stat = {
+                code: 4,
+                state: 'FAILED',
+                time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+                payload: {
+                    regerr: 'Key Exist'
+                }
+            };
+            ctxBody(ctx, res, 200);
+        }
+    }
 }
 
 const cancel: Koa.Middleware = async(ctx, next)=> {
-
+    const info:any = ctx.request.body;
+    const usr = info.usr;
+    /*
+    db
+    */
+    const redisStat = await cacheS.unreg(info.name);
+    switch(redisStat){
+        case 'OK': {
+            const res: upl_stat = {
+                code: 3,
+                state: 'SUCCESS',
+                time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+            };
+            await fileS.Del(info.name);
+            ctxBody(ctx, res, 200);
+        }
+        case 'FAILED': {
+            throw {errcode: 101, err: 'Redis Failed'};
+        }
+        case 'NOT EXIST': {
+            const res: upl_stat = {
+                code: 4,
+                state: 'FAILED',
+                time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
+                payload: {
+                    regerr: 'Key Exist'
+                }
+            };
+            ctxBody(ctx, res, 200);
+        }
+    }
 }
 
 const del: Koa.Middleware = async(ctx, next)=> {
+    const info = ctx.request.body;
     /*
     db*/
-
+    const fileInfo = await cacheS.getValue(info.name);
+    if(fileInfo == null){
+        cacheS.unreg();
+    }
 }
 
 export {upload, reg, stop, cancel};

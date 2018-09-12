@@ -4,7 +4,7 @@ import * as bluebird from 'bluebird';
 import { RedisClient } from 'redis';
 import { redis_interface } from '../interfaces';
 
-type FILE_STAT = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|{code: 3, info: 'REDIS FAILED'};
+type FILE_STAT = {code: 0, info: 'ONLINE'}|{code: 1, info: 'EXPIRED'}|{code: 2, info: 'OFFLINE'}|{code: 3, info: 'NOT EXIST'}|{code: 4, info: 'REDIS FAILED'};
 
 /**
  * @param {number}code
@@ -15,7 +15,8 @@ function makeFileStat(code: number): FILE_STAT{
         case 0: return {code: 0, info: 'ONLINE'};
         case 1: return {code: 1, info: 'EXPIRED'};
         case 2: return {code: 2, info: 'OFFLINE'};
-        case 3: return {code: 3, info: 'REDIS FAILED'};
+        case 3: return {code: 3, info: 'NOT EXIST'};        
+        case 4: return {code: 4, info: 'REDIS FAILED'};
     }
 }
 
@@ -27,6 +28,9 @@ class Cache{
     redisHgetall: any;
     redisListkeys:any;
     redisDel: any;
+    redisKeys: any;
+    keyList: Array<string>;
+    count: number = 0;
 
     constructor(redis_conf: redis_interface, expire: number){
         this.expire = expire;
@@ -40,6 +44,8 @@ class Cache{
         this.redisHmset = bluebird.promisify(this.client.hmset).bind(this.client);
         this.redisListkeys = bluebird.promisify(this.client.keys).bind(this.client);
         this.redisDel = bluebird.promisify(this.client.del).bind(this.client);
+        this.redisKeys = bluebird.promisify(this.client.keys).bind(this.client);
+        this.keyList = [];
     };
 
     /** 
@@ -49,12 +55,14 @@ class Cache{
     */
     async reg(key: string, payload: object){
         const now = (new Date()).getTime() / 1000;
-        const findKey = await this.getValue(key);
-        if(findKey == null){ 
+        const findKey = await this.exist(key);
+        if(findKey == false){ 
             const value = {...payload, time: now, state: 'ONLINE', count: 0};
             const state = await this.redisHmset(key, value);
-            if(state == 'OK')return 'OK';
-                else return 'FAILED';
+            if(state == 'OK'){
+                this.keyList.push(key);
+                return 'OK';
+            }else return 'FAILED';
         }else{
             return 'EXIST';
         }
@@ -74,20 +82,17 @@ class Cache{
     * @return {FILE_STAT} -expire status 
     */
     async checkExpire(key: string, now: number = (new Date()).getTime() / 1000){
-        try{
-            const value = await this.redisHgetall(key);
-            if(value == null)return makeFileStat(3);
-            const lastChange = value.time;
-            if(now - lastChange >= this.expire && value.state == 'ONLINE'){
-                return makeFileStat(1);
-            }else if(value.state == 'OFFLINE'){
-                return makeFileStat(2);
-            }else{
-                return makeFileStat(0);
-            }
-        }catch(e){
-            throw {errcode: 102, err: 'Reids Key Not Exist'}
-        };
+        const findKey = await this.exist(key);
+        if(findKey == false)return makeFileStat(3);
+        const value = await this.getValue(key);
+        const lastChange = value.time;
+        if(now - lastChange >= this.expire && value.state == 'ONLINE'){
+            return makeFileStat(1);
+        }else if(value.state == 'OFFLINE'){
+            return makeFileStat(2);
+        }else{
+            return makeFileStat(0);
+        }
     }
 
     /** 
@@ -108,12 +113,12 @@ class Cache{
                 newValue = {...rawValue, time: now, count: rawValue.count + 1};
                 const state = await this.redisHmset(key, newValue);
                 if(state == 'OK')return makeFileStat(0);
-                    else return makeFileStat(3);
+                    else return makeFileStat(4);
             }else if(command == 'HANGUP'){
                 newValue = {...rawValue, time: now, state: 'OFFLINE'};
                 const state = await this.redisHmset(key, newValue);
                 if(state == 'OK')return makeFileStat(2);
-                    else return makeFileStat(3);
+                    else return makeFileStat(4);
             }else{
                 return makeFileStat(0);               
             }
@@ -124,15 +129,15 @@ class Cache{
                 newValue = {...rawValue, time: now, state: 'OFFLINE'};
                 const state = await this.redisHmset(key, newValue);
                 if(state == 'OK')return makeFileStat(2);
-                    else return makeFileStat(3);
+                    else return makeFileStat(4);
             }else{
                 newValue = {...rawValue, time: now, state: 'ONLINE'};
                 const state = await this.redisHmset(key, newValue);
                 if(state == 'OK')return makeFileStat(0);
-                    else return makeFileStat(3);               
+                    else return makeFileStat(4);               
             }
             
-        }else{ // offline
+        }else if(expireStatus.code == 2){ // offline
             if(command == 'UPDATE'){
                 return makeFileStat(2);
             }else if(command == 'HANGUP'){
@@ -141,19 +146,37 @@ class Cache{
                 newValue = {...rawValue, time: now, state: 'ONLINE'};
                 const state = await this.redisHmset(key, newValue);
                 if(state == 'OK')return makeFileStat(0);
-                    else return makeFileStat(3);               
+                    else return makeFileStat(4);               
             }
+        }else{
+            return expireStatus;
         }
     }
 
     /**
      * @param {string} key 
-     * @return {OK|FAILED} - unreg status
+     * @return {OK|FAILED|NOT EXIST} - unreg status
      */
     async unreg(key: string){
+        const findKey = await this.exist(key);
+        if(findKey == false){
+            return 'NOT EXIST';
+        }
         const state = await this.redisDel(key);
         if(state == 'OK')return 'OK';
             else return 'FAILED';
+    }
+
+    /**
+     * @param {string} key 
+     * @return {TRUE|FALSE|FAILED} - unreg status
+     */
+    async exist(key: string){
+        if(this.count == 0){
+            this.count = (this.count + 1) % 50;
+            this.keyList = await this.redisKeys('*');
+        }
+        return this.keyList.includes(key);
     }
 };
 
