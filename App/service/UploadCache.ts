@@ -159,11 +159,10 @@ class Cache{
      */
     async unreg(key: string){
         const findKey = await this.exist(key);
-        if(findKey == false){
-            return 'NOT EXIST';
-        }
+        if(findKey == false)return 'NOT EXIST';
         const state = await this.redisDel(key);
-        if(state == 'OK')return 'OK';
+        this.keyList.splice(this.keyList.indexOf(key), 1);
+        if(state == true)return 'OK';
             else return 'FAILED';
     }
 

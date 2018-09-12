@@ -52,8 +52,7 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                     };
                     ctxBody(ctx, res, 200);
                 }else{
-                    const unregStat = await cacheS.unreg(info.name);
-                    console.log(unregStat);
+                    const unregStat = await cacheS.unreg(name);
                     if(unregStat == 'FAILED')throw {errcode: 101, err: 'Redis Failed'};
                     const res: upl_stat = {
                         code: 0,
@@ -314,4 +313,4 @@ const del: Koa.Middleware = async(ctx, next)=> {
     }
 }
 
-export {upload, reg, stop, cancel};
+export {upload, reg, stop, cancel, del, verify};
