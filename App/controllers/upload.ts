@@ -7,7 +7,7 @@ import ctxBody from '../utils/ctxBody';
 import getJson from '../utils/getjson';
 
 import {upl_stat} from '../interfaces';
-//import fdb from '../models/files.model';                 // DB which store informations of files
+import fdb from '../models/files.model';                 // DB which store informations of files
 import {FILE_STAT, Cache} from '../service/UploadCache'; // file-stat cache
 import {FileService} from '../service/FileService';      // file-store service
 
@@ -168,6 +168,9 @@ const stop: Koa.Middleware = async(ctx, next)=> {
 const verify: Koa.Middleware = async(ctx, next)=> {
     const info = ctx.request.body;
     if(info.verify == true){
+        const dbStat = await fdb.update({
+            hash: info.hash,
+        });
         const redisStat = await cacheS.unreg(info.name);
         if(redisStat == 'OK'){
             const res: upl_stat = {
@@ -203,17 +206,17 @@ const verify: Koa.Middleware = async(ctx, next)=> {
 const reg: Koa.Middleware = async(ctx, next)=> {
     const info:any = ctx.request.body;
     const usr = info.usr;
-    /*
+    
     const dbStat = await fdb.create({
-        title: file_info.name,
-        time: file_info.time,
-        description: file_info.description,
+        title: info.name,
+        time: info.time,
+        description: info.description,
         url: '/file',
-        size: 100,
-        hash: 'ssss',
+        size: info.size,
+        hash: 'N/A',
         author: usr
     });
-    */
+    
     const redisStat = await cacheS.reg(info.name, {size: info.size, recieved: 0});
     switch(redisStat){
         case 'OK': {
@@ -246,9 +249,13 @@ const reg: Koa.Middleware = async(ctx, next)=> {
 const cancel: Koa.Middleware = async(ctx, next)=> {
     const info:any = ctx.request.body;
     const usr = info.usr;
-    /*
-    db
-    */
+    
+    const dbStat = await fdb.destroy({
+        where: {
+            title: info.name,
+        }
+    });
+    
     const redisStat = await cacheS.unreg(info.name);
     switch(redisStat){
         case 'OK': {
@@ -281,9 +288,13 @@ const cancel: Koa.Middleware = async(ctx, next)=> {
 
 const del: Koa.Middleware = async(ctx, next)=> {
     const info = ctx.request.body;
-    /*
-    db
-    */
+    
+    const dbStat = await fdb.destroy({
+        where: {
+            title: info.name,
+        }
+    });
+    
     const fileInfo = await cacheS.exist(info.name);
     if(fileInfo == true){
         const redisStat = await cacheS.unreg(info.name);
