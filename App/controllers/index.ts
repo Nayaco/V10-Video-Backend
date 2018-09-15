@@ -1,6 +1,6 @@
 import * as Koa from 'koa';
 import * as Router from 'koa-router';
-import {upload, reg} from './upload';
+import {upload, reg, del, cancel, stop, verify} from './upload';
 const _router = new Router();
 
 export const router = ():Koa.Middleware=> {

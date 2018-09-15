@@ -60,7 +60,6 @@ const upload: Koa.Middleware = async(ctx, next)=> {
                         time: moment().format('YYYY-MM-DD HH:mm:ss.sssZ'),
                         payload: {
                             finish: true,
-                            hash: await fileS.GetHash(name),
                         }
                     };
                     ctxBody(ctx, res, 200);
@@ -167,9 +166,15 @@ const stop: Koa.Middleware = async(ctx, next)=> {
  */
 const verify: Koa.Middleware = async(ctx, next)=> {
     const info = ctx.request.body;
-    if(info.verify == true){
+    const name = info.name;
+    const hash =  await fileS.GetHash(name);
+    if(info.hash == hash){
         const dbStat = await fdb.update({
-            hash: info.hash,
+            hash: hash,
+        }, {
+            where: {
+                url: `/${name}`,
+            }
         });
         const redisStat = await cacheS.unreg(info.name);
         if(redisStat == 'OK'){
@@ -206,12 +211,11 @@ const verify: Koa.Middleware = async(ctx, next)=> {
 const reg: Koa.Middleware = async(ctx, next)=> {
     const info:any = ctx.request.body;
     const usr = info.usr;
-    
     const dbStat = await fdb.create({
-        title: info.name,
+        title: info.title,
         time: info.time,
         description: info.description,
-        url: '/file',
+        url: `/${info.name}`,
         size: info.size,
         hash: 'N/A',
         author: usr
@@ -252,7 +256,7 @@ const cancel: Koa.Middleware = async(ctx, next)=> {
     
     const dbStat = await fdb.destroy({
         where: {
-            title: info.name,
+            url: `/${name}`,
         }
     });
     
@@ -291,7 +295,7 @@ const del: Koa.Middleware = async(ctx, next)=> {
     
     const dbStat = await fdb.destroy({
         where: {
-            title: info.name,
+            url: `/${name}`,
         }
     });
     
