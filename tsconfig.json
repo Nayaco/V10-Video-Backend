@@ -7,7 +7,7 @@
         "sourceMap": true
     },
     "include": [
-        "./App/**/*"
+        "./App/**/*", "test/fs.spec.ts"
     ]
     ,
     "exclude": [
