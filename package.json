@@ -10,7 +10,7 @@
     "commit": "./.autocommit"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/bluebird": "^3.5.24",
     "@types/fs-extra": "^5.0.4",
@@ -19,6 +19,12 @@
     "@types/koa-router": "^7.0.31",
     "@types/redis": "^2.8.6",
     "@types/sequelize": "^4.27.25",
+    "@types/mocha": "^5.2.5",
+    "mocha": "^5.2.0",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.0.3"
+  },
+  "dependencies": {
     "bluebird": "^3.5.1",
     "fs-extra": "^7.0.0",
     "jsonwebtoken": "^8.3.0",
@@ -29,9 +35,5 @@
     "mysql2": "^1.6.1",
     "redis": "^2.8.0",
     "sequelize": "^4.38.0"
-  },
-  "dependencies": {
-    "@types/mocha": "^5.2.5",
-    "mocha": "^5.2.0"
   }
 }
