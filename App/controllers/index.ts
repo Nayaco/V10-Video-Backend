@@ -1,6 +1,6 @@
 import * as Koa from 'koa';
 import * as Router from 'koa-router';
-import {upload, reg, del, cancel, stop, verify} from './upload';
+import {upload, reg, cancel, stop, verify} from './upload';
 const _router = new Router();
 
 /// main entry of this koa-application
@@ -10,8 +10,8 @@ const _router = new Router();
 /// 3. media delete
 /// 
 export const router = ():Koa.Middleware=> {
-    _router.post('/media',upload);
-    _router.post('/regmedia', reg);
-    _router
+    _router.post('/media/blob', upload);
+    _router.post('/media/reg', reg);
+    _router.post('/media/cancel', cancel);
     return _router.routes();
 }
